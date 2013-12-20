@@ -5,22 +5,17 @@ module OrganizationAudit
 
   class << self
     def all(options={})
-      Repo.all(options).select do |repo|
+      Repo.all(options).reject do |repo|
         ignored = (options[:ignore] || [])
-        next if ignored.include?(repo.url) or ignored.include?(repo.name)
-        next if options[:ignore_gems] and repo.gem?
-        true
+        ignored.include?(repo.url) or ignored.include?(repo.name)
       end
     end
 
-    def optparse(parser)
-      options = {}
-      parser.on("--token TOKEN", "Use this github token") { |token| options[:token] = token }
+    def optparse(parser, options)
       parser.on("--user USER", "Use this github user") { |user| options[:user] = user }
-      parser.on("--ignore REPO_NAME", "Ignore given repo name (use multiple times)") { |repo_name| options[:ignore] << repo_name }
-      parser.on("--ignore-gems", "Ignore repos that have a %{repo}.gemspec") { options[:ignore_gems] = true }
       parser.on("--organization ORGANIZATION", "Use this github organization") { |organization| options[:organization] = organization }
-      options
+      parser.on("--token TOKEN", "Use this github token") { |token| options[:token] = token }
+      parser.on("--ignore REPO", "Ignore given repo name or url (use multiple times)") { |repo_name| options[:ignore] << repo_name }
     end
   end
 end

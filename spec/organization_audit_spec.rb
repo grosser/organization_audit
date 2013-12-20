@@ -35,19 +35,13 @@ describe OrganizationAudit do
     it "can run readme optparse" do
       options = nil
       with_argv(["--user", "USER"]) { eval readme_code("optparse") }
-      options.should == {}
+      options.should == {:user => "USER"}
     end
   end
 
   context ".all" do
     it "returns all repos" do
       OrganizationAudit.all(:user => "user-with-unpatched-apps").map(&:name).should == ["unpatched"]
-    end
-
-    it "ignores gems" do
-      found = OrganizationAudit.all(:user => "anamartinez", :ignore_gems => true).map(&:name)
-      found.size.should >= 5
-      found.should_not include "large_object_store"
     end
 
     it "ignores by name" do

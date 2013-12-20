@@ -28,7 +28,7 @@ Commandline tool: fetch :user/:token/:organization/:ignore/:ignore_gems
 options = {}
 OptionParser.new do |parser|
   parser.banner = "My shiny tool"
-  options.merge!(OrganizationAudit.optparse(parser))
+  OrganizationAudit.optparse(parser, options)
 end.parse!
 ```
 <!-- example -->
@@ -37,7 +37,6 @@ end.parse!
  - :user
  - :organization
  - :token (see below)
- - :ignore_gems (do not include gems, aka projects with a `%{name}.gemspec`)
  - :ignore (do not include these repos with this url or name)
 
 ### Token

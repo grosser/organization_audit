@@ -14,4 +14,5 @@ Gem::Specification.new name, OrganizationAudit::VERSION do |s|
     s.signing_key = cert
     s.cert_chain = ["gem-public_cert.pem"]
   end
+  s.add_runtime_dependency "json"
 end
