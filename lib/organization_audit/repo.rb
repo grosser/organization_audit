@@ -12,11 +12,11 @@ module OrganizationAudit
     end
 
     def gem?
-      !!gemspec_content
+      !!gemspec_file
     end
 
     def gemspec_content
-      content("#{name}.gemspec")
+      content(gemspec_file) if gem?
     end
 
     def url
@@ -76,7 +76,17 @@ module OrganizationAudit
       end
     end
 
+    def file_list
+      @file_list ||= call_api("contents?branch=#{branch}").
+        select { |f| f["type"] == "file" }.
+        map { |file| file["path"] }
+    end
+
     private
+
+    def gemspec_file
+      file_list.grep(/\.gemspec$/).first
+    end
 
     def self.download_all_pages(url, headers)
       results = []

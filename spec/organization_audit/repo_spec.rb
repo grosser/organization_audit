@@ -81,5 +81,13 @@ describe OrganizationAudit::Repo do
       repo.clone_url.should == "https://github.com/grosser/parallel.git"
     end
   end
+
+  describe "#file_list" do
+    it "lists all files, not folders" do
+      list = repo.file_list
+      list.should include("Gemfile")
+      list.should_not include "lib"
+    end
+  end
 end
 
