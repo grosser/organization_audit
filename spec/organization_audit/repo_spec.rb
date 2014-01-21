@@ -88,6 +88,25 @@ describe OrganizationAudit::Repo do
       list.should include("Gemfile")
       list.should_not include "lib"
     end
+
+    it "lists folder content" do
+      list = repo.file_list("lib")
+      list.should == ["lib/parallel.rb"]
+    end
+  end
+
+  describe "#directory?" do
+    it "knows existing folders" do
+      repo.directory?("lib").should == true
+    end
+
+    it "does not know missing folders" do
+      repo.directory?("foo").should == false
+    end
+
+    it "can distinguish between files and folders" do
+      repo.directory?("Gemfile").should == false
+    end
   end
 end
 

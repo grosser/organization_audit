@@ -76,13 +76,20 @@ module OrganizationAudit
       end
     end
 
-    def file_list
-      @file_list ||= call_api("contents?branch=#{branch}").
-        select { |f| f["type"] == "file" }.
-        map { |file| file["path"] }
+    def file_list(dir=".")
+      list(dir).select { |f| f["type"] == "file" }.map { |file| file["path"] }
+    end
+
+    def directory?(folder)
+      !!list(File.dirname(folder)).detect { |f| f["path"] == folder && f["type"] == "dir" }
     end
 
     private
+
+    def list(dir)
+      @list ||= {}
+      @list[dir] ||= call_api("contents/#{dir == "." ? "" : dir}?branch=#{branch}")
+    end
 
     def gemspec_file
       file_list.grep(/\.gemspec$/).first
