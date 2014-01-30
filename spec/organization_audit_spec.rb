@@ -40,18 +40,29 @@ describe OrganizationAudit do
   end
 
   context ".all" do
+    let(:all) { ["unpatched"] }
+
     it "returns all repos" do
-      OrganizationAudit.all(:user => "user-with-unpatched-apps").map(&:name).should == ["unpatched"]
+      found = OrganizationAudit.all(:user => "user-with-unpatched-apps").map(&:name)
+      found.should == all
     end
 
     it "ignores by name" do
-      found = OrganizationAudit.all(:user => "user-with-unpatched-apps", :ignore => "unpatched").map(&:name)
+      found = OrganizationAudit.all(:user => "user-with-unpatched-apps", :ignore => ["unpatched"]).map(&:name)
       found.should == []
     end
 
     it "ignores by url" do
-      found = OrganizationAudit.all(:user => "user-with-unpatched-apps", :ignore => "https://github.com/user-with-unpatched-apps/unpatched").map(&:name)
+      found = OrganizationAudit.all(:user => "user-with-unpatched-apps", :ignore => ["https://github.com/user-with-unpatched-apps/unpatched"]).map(&:name)
       found.should == []
+    end
+
+    it "ignores by regexp" do
+      found = OrganizationAudit.all(:user => "user-with-unpatched-apps", :ignore => ["/unp?atch[e]d/"]).map(&:name)
+      found.should == []
+
+      found = OrganizationAudit.all(:user => "user-with-unpatched-apps", :ignore => ["/unp?ach[e]d/"]).map(&:name)
+      found.should == all
     end
   end
 end
