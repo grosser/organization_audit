@@ -64,5 +64,10 @@ describe OrganizationAudit do
       found = OrganizationAudit.all(:user => "user-with-unpatched-apps", :ignore => ["/unp?ach[e]d/"]).map(&:name)
       found.should == all
     end
+
+    it "ignores by public" do
+      found = OrganizationAudit.all(:user => "user-with-unpatched-apps", :ignore_public => true).map(&:name)
+      found.should == []
+    end
   end
 end

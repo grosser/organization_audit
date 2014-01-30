@@ -6,7 +6,9 @@ module OrganizationAudit
   class << self
     def all(options={})
       ignore = (options[:ignore] || [])
-      Repo.all(options).reject { |repo| matches_ignore?(ignore, repo) }
+      Repo.all(options).reject do |repo|
+        matches_ignore?(ignore, repo) or (options[:ignore_public] and repo.public?)
+      end
     end
 
     def optparse(parser, options)
@@ -14,6 +16,7 @@ module OrganizationAudit
       parser.on("--organization ORGANIZATION", "Use this github organization") { |organization| options[:organization] = organization }
       parser.on("--token TOKEN", "Use this github token") { |token| options[:token] = token }
       parser.on("--ignore REPO", "Ignore given repo name or url or name /regexp/ (use multiple times)") { |repo_name| options[:ignore] << repo_name }
+      parser.on("--ignore-public", "Ignore public repos") { options[:ignore_public] = true }
     end
 
     private

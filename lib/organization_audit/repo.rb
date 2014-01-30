@@ -62,6 +62,10 @@ module OrganizationAudit
       @data["private"]
     end
 
+    def public?
+      !private?
+    end
+
     def last_commiter
       response = call_api("commits/#{branch}")
       committer = response["commit"]["committer"]
