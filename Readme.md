@@ -47,7 +47,6 @@ create a token that has access to your repositories
 curl -v -u your-user-name -X POST https://api.github.com/authorizations --data '{"scopes":["repo"]}'
 enter your password -> TOKEN
 ```
-```
 
 Related
 =======
