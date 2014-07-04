@@ -51,7 +51,7 @@ enter your password -> TOKEN
 Related
 =======
  - [organization license audit](https://github.com/grosser/organization_license_audit) audit all repos for used licenses
- - [bundler organization audit](https://github.com/grosser/bundler_organization_audit) audit all repos for ruby and gem vulnerabilities
+ - [bundler organization audit](https://github.com/grosser/bundler-organization_audit) audit all repos for ruby and gem vulnerabilities
 
 Author
 ======
