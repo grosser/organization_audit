@@ -1,17 +1,24 @@
 require "spec_helper"
 
 describe OrganizationAudit do
-  def readme_code(section)
-    code = File.read("Readme.md")[/<!-- example #{section} -->\n```Ruby(.*?)```\n<!-- example -->/m, 1]
-    raise "Section #{section} not found" unless code
-    code
+  def sh(command, options={})
+    result = Bundler.with_clean_env { `#{command} #{"2>&1" unless options[:keep_output]}` }
+    raise "#{options[:fail] ? "SUCCESS" : "FAIL"} #{command}\n#{result}" if $?.success? == !!options[:fail]
+    result
   end
+
 
   it "has a VERSION" do
     OrganizationAudit::VERSION.should =~ /^[\.\da-z]+$/
   end
 
   context "readme" do
+    def readme_code(section)
+      code = File.read("Readme.md")[/<!-- example #{section} -->\n```Ruby(.*?)```\n<!-- example -->/m, 1]
+      raise "Section #{section} not found" unless code
+      code
+    end
+
     def silence_warnings
       old, $VERBOSE = $VERBOSE, nil
       yield
@@ -68,6 +75,28 @@ describe OrganizationAudit do
     it "ignores by public" do
       found = OrganizationAudit.all(:user => "user-with-unpatched-apps", :ignore_public => true).map(&:name)
       found.should == []
+    end
+
+    context "token" do
+      around do |example|
+        Dir.mktmpdir do |dir|
+          Dir.chdir(dir) do
+            sh("git init")
+            sh("git config --local github.token xxx")
+            example.call
+          end
+        end
+      end
+
+      it "uses token from git config" do
+        OrganizationAudit::Repo.should_receive(:all).with(hash_including(:token => 'xxx')).and_return []
+        OrganizationAudit.all.should == []
+      end
+
+      it "does not overwrite passed token" do
+        OrganizationAudit::Repo.should_receive(:all).with(hash_including(:token => 'zzz')).and_return []
+        OrganizationAudit.all(:token => 'zzz').should == []
+      end
     end
   end
 end

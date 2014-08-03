@@ -10,6 +10,8 @@ gem install organization_audit
 Usage
 =====
 
+Token has to be passed or is fetched from `git config github.token`.
+
 <!-- example all -->
 ```Ruby
 require 'organization_audit'

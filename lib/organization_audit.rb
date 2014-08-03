@@ -6,6 +6,12 @@ module OrganizationAudit
   class << self
     def all(options={})
       ignore = (options[:ignore] || [])
+      unless options[:token]
+        options = options.dup
+        token = `git config github.token`.strip
+        options[:token] = token unless token.empty?
+      end
+
       Repo.all(options).reject do |repo|
         matches_ignore?(ignore, repo) or (options[:ignore_public] and repo.public?)
       end
