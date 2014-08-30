@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    organization_audit (1.0.3)
+    organization_audit (1.0.4)
       json
 
 GEM
