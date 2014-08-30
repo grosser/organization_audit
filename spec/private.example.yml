@@ -5,3 +5,4 @@ expected_user: your-private-repo
 
 organization: org
 expected_organization: org-private-repo
+expected_gemfile_content: metaclass (0

@@ -56,7 +56,7 @@ describe OrganizationAudit::Repo do
           {"url" => url, "private" => true}, config["token"]
         )
         content = repo.content("Gemfile.lock")
-        content.should include('i18n (0.')
+        content.should include(config["expected_gemfile_content"])
       end
     end
   end
