@@ -69,6 +69,10 @@ describe OrganizationAudit::Repo do
     it "is not a gem if it has no gemspec" do
       OrganizationAudit::Repo.new("url" => "https://api.github.com/repos/grosser/dotfiles").should_not be_gem
     end
+
+    it "is not a gem if repo is empty" do
+      OrganizationAudit::Repo.new("url" => "https://api.github.com/repos/some-public-token/empty-project").should_not be_gem
+    end
   end
 
   describe "#clone_url" do

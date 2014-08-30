@@ -92,7 +92,15 @@ module OrganizationAudit
 
     def list(dir)
       @list ||= {}
-      @list[dir] ||= call_api("contents/#{dir == "." ? "" : dir}?branch=#{branch}")
+      @list[dir] ||= begin
+        call_api("contents/#{dir == "." ? "" : dir}?branch=#{branch}")
+      rescue OpenURI::HTTPError => e
+        if e.message =~ /404 Not Found/
+          []
+        else
+          raise
+        end
+      end
     end
 
     def gemspec_file
