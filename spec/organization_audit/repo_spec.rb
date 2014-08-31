@@ -42,6 +42,13 @@ describe OrganizationAudit::Repo do
       repo.content("Gemfile.lock").should include('rspec (2')
     end
 
+    it "retries on timeout" do
+      repo.should_receive(:open).exactly(3).and_raise(OpenURI::HTTPError.new("503 Connection timed out", StringIO.new))
+      expect {
+        repo.content("Gemfile.lock")
+      }.to raise_error(/Error downloading Gemfile.lock/)
+    end
+
     it "caches responses" do
       repo.should_receive(:download_content_via_raw).and_return "XXX"
       repo.content("Gemfile.lock").should == "XXX"

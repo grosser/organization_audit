@@ -145,7 +145,7 @@ module OrganizationAudit
 
     def call_api(path)
       content = self.class.decorate_errors do
-        open(File.join(api_url, path), self.class.headers(@token)).read
+        download(File.join(api_url, path), self.class.headers(@token))
       end
       JSON.load(content)
     end
@@ -159,7 +159,18 @@ module OrganizationAudit
 
     # unlimited
     def download_content_via_raw(file)
-      open(File.join(raw_url, branch, file)).read
+      download(File.join(raw_url, branch, file))
+    end
+
+    def download(url, headers={})
+      open(url, headers).read
+    rescue OpenURI::HTTPError => e
+      if e.message.start_with?("503 Connection timed out")
+        retries ||= 0
+        retries += 1
+        retry if retries < 3
+      end
+      raise e
     end
 
     def self.headers(token)
