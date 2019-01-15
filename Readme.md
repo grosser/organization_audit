@@ -24,7 +24,7 @@ end
 ```
 <!-- example -->
 
-Commandline tool: fetch :user/:token/:organization/:ignore/:ignore_gems
+Commandline tool: fetch :user/:token/:organization/:ignore/:ignore_gems from ARGV
 <!-- example optparse -->
 ```Ruby
 options = {}
@@ -36,10 +36,10 @@ end.parse!
 <!-- example -->
 
 ### Options
+
  - :user
  - :organization
  - :token (see below)
- - :ignore (do not include these repos with this url or name)
 
 ### Token
 

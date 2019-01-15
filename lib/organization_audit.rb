@@ -27,7 +27,7 @@ module OrganizationAudit
 
     def matches_ignore?(ignore, repo)
       ignore_regexp = Regexp.union *ignore.grep(/^\/.*\/$/).map { |i| Regexp.new(i[1..-2]) }
-      ignore.include?(repo.url) || ignore.include?(repo.name) || ignore_regexp.match?(repo.name)
+      ignore.include?(repo.url) || ignore.include?(repo.name) || ignore_regexp =~ repo.name
     end
   end
 end
