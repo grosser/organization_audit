@@ -1,10 +1,21 @@
-require "open-uri"
 require "json"
 require "base64"
+require "net/http"
 
 module OrganizationAudit
   class Repo
     HOST = "https://api.github.com"
+
+    class RequestError < StandardError
+      attr_reader :url, :code, :body
+
+      def initialize(message, url=nil, code=500, body='')
+        @url = url
+        @code = Integer(code)
+        @body = body
+        super "#{message}\n#{url}\nCode: #{code}\n#{body}"
+      end
+    end
 
     def initialize(data, token=nil)
       @data = data
@@ -31,31 +42,29 @@ module OrganizationAudit
       api_url.split("/").last
     end
 
-    def self.all(options)
-      user = if options[:organization]
-        "orgs/#{options[:organization]}"
-      elsif options[:user]
-        "users/#{options[:user]}"
+    def self.all(organization: nil, user: nil, max_pages: nil, token: nil)
+      user = if organization
+        "orgs/#{organization}"
+      elsif user
+        "users/#{user}"
       else
         "user"
       end
       url = File.join(HOST, user, "repos")
 
-      token = options[:token]
-      download_all_pages(url, headers(token)).map { |data| Repo.new(data, token) }
+      download_all_pages(url, headers(token), max_pages: max_pages).map { |data| Repo.new(data, token) }
     end
 
     def content(file)
-      @content ||= {}
-      @content[file] ||= begin
+      (@content ||= {})[file] ||= begin
         if private?
           download_content_via_api(file)
         else
           download_content_via_raw(file)
         end
       end
-    rescue OpenURI::HTTPError => e
-      raise "Error downloading #{file} from #{url} (#{e})" unless e.message.start_with?("404")
+    rescue RequestError => e
+      raise unless e.code == 404
     end
 
     def private?
@@ -91,15 +100,10 @@ module OrganizationAudit
     private
 
     def list(dir)
-      @list ||= {}
-      @list[dir] ||= begin
+      (@list ||= {})[dir] ||= begin
         call_api("contents/#{dir == "." ? "" : dir}?branch=#{branch}")
-      rescue OpenURI::HTTPError => e
-        if e.message =~ /404 Not Found/
-          []
-        else
-          raise
-        end
+      rescue RequestError => e
+        e.code == 404 ? [] : raise
       end
     end
 
@@ -107,22 +111,34 @@ module OrganizationAudit
       file_list.grep(/\.gemspec$/).first
     end
 
-    def self.download_all_pages(url, headers)
+    def self.download_all_pages(url, headers, max_pages: nil)
       results = []
       page = 1
       loop do
-        response = decorate_errors do
-          open("#{url}?page=#{page}", headers).read
-        end
+        response = http_get("#{url}?page=#{page}", headers)
         result = JSON.parse(response)
-        if result.size == 0
-          break
-        else
-          results.concat(result)
-          page += 1
-        end
+        results.concat(result)
+
+        break if result.size == 0 || (max_pages && page >= max_pages) # stop on empty page or over max
+        page += 1
       end
       results
+    end
+
+    def self.http_get(url, headers)
+      uri = URI(url)
+      request = Net::HTTP::Get.new(uri, headers)
+      http = Net::HTTP.new(uri.hostname, uri.port)
+      http.use_ssl = true if uri.instance_of? URI::HTTPS
+      response =
+        begin
+          http.start { |http| http.request(request) }
+        rescue
+          raise RequestError.new("#{$!.class} error during request #{url}", url)
+        end
+
+      return response.body if response.code == '200'
+      raise RequestError.new("HTTP get error", url, response.code, response.body)
     end
 
     def branch
@@ -134,27 +150,18 @@ module OrganizationAudit
     end
 
     def raw_url
-      url.sub("://", "://raw.")
+      url.dup.sub!("://github.com", "://raw.githubusercontent.com") || raise("Unable to determine raw url for #{url}")
     end
 
     # increases api rate limit
     def download_content_via_api(file)
-      content = call_api("contents/#{file}?branch=#{branch}")["content"]
+      content = call_api("contents/#{file}?branch=#{branch}").fetch("content")
       Base64.decode64(content)
     end
 
     def call_api(path)
-      content = self.class.decorate_errors do
-        download(File.join(api_url, path), self.class.headers(@token))
-      end
+      content = download(File.join(api_url, path), self.class.headers(@token))
       JSON.load(content)
-    end
-
-    def self.decorate_errors
-      yield
-    rescue OpenURI::HTTPError => e
-      e.message << " -- body: " << e.io.read
-      raise e
     end
 
     # unlimited
@@ -163,9 +170,9 @@ module OrganizationAudit
     end
 
     def download(url, headers={})
-      open(url, headers).read
-    rescue OpenURI::HTTPError => e
-      if e.message.start_with?("503 Connection timed out")
+      self.class.http_get(url, headers)
+    rescue RequestError => e
+      if e.message.include? "Timeout"
         retries ||= 0
         retries += 1
         retry if retries < 3

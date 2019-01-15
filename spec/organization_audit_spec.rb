@@ -9,7 +9,7 @@ describe OrganizationAudit do
 
 
   it "has a VERSION" do
-    OrganizationAudit::VERSION.should =~ /^[\.\da-z]+$/
+    OrganizationAudit::VERSION.should =~ /^[.\da-z]+$/
   end
 
   context "readme" do

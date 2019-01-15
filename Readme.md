@@ -16,7 +16,7 @@ Token has to be passed or is fetched from `git config github.token`.
 ```Ruby
 require 'organization_audit'
 
-OrganizationAudit.all(:user => "anamartinez").each do |repo|
+OrganizationAudit.all(user: "anamartinez").each do |repo|
   if !repo.private? && repo.gem? && repo.content("Gemfile").to_s.include?("rake")
     puts "#{repo.name} includes rake!"
   end

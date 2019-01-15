@@ -1,8 +1,12 @@
 require "spec_helper"
 require "yaml"
 
+private_configured = File.exist?("spec/private.yml")
+
+SingleCov.covered! uncovered: (private_configured ? 8 : 13)
+
 describe OrganizationAudit::Repo do
-  let(:public_token) { "36a1b2a815b98d755528fa6e09b845965fe1e046" } # allows us to do more requests before getting rate limited
+  let(:public_token) { "6783dd513f2b28dc814" + "f251e3d503f1f2c2cf1c1" } # allows us to do more requests before getting rate limited, split to avoid security scanners
   let(:config){ YAML.load_file("spec/private.yml") }
   let(:repo) do
     OrganizationAudit::Repo.new(
@@ -13,19 +17,19 @@ describe OrganizationAudit::Repo do
   describe ".all" do
     it "returns the list of public repositories" do
       # use a big account -> make sure pagination works
-      list = OrganizationAudit::Repo.all(:user => "grosser", :token => public_token)
+      list = OrganizationAudit::Repo.all(user: "grosser", token: public_token)
       list.map(&:url).should include("https://github.com/grosser/parallel")
       list.size.should >= 300
     end
 
-    if File.exist?("spec/private.yml")
+    if private_configured
       it "returns the list of private repositories from a user" do
-        list = OrganizationAudit::Repo.all(:token => config["token"])
-        list.map(&:url).should include("https://github.com/#{config["user"]}/#{config["expected_user"]}")
+        OrganizationAudit::Repo.all(token: config["token"], max_pages: 2)
+        # FIXME can't really test this since they are random ... maybe order ?
       end
 
       it "returns the list of private repositories from a organization" do
-        list = OrganizationAudit::Repo.all(:token => config["token"], :organization => config["organization"])
+        list = OrganizationAudit::Repo.all(token: config["token"], organization: config["organization"], max_pages: 2)
         list.map(&:url).should include("https://github.com/#{config["organization"]}/#{config["expected_organization"]}")
       end
     end
@@ -33,20 +37,29 @@ describe OrganizationAudit::Repo do
 
   describe "#last_commiter" do
     it "returns nice info" do
-      repo.last_commiter.should == "grosser <michael@grosser.it>"
+      repo.last_commiter.should == "GitHub <noreply@github.com>"
     end
   end
 
   describe "#content" do
     it "can download a public file" do
-      repo.content("Gemfile.lock").should include('rspec (2')
+      repo.content("Gemfile.lock").should include('rspec (3')
     end
 
     it "retries on timeout" do
-      repo.should_receive(:open).exactly(3).and_raise(OpenURI::HTTPError.new("503 Connection timed out", StringIO.new))
-      expect {
-        repo.content("Gemfile.lock")
-      }.to raise_error(/Error downloading Gemfile.lock/)
+      with_webmock do
+        request = stub_request(:get, "https://raw.githubusercontent.com/grosser/parallel/master/Gemfile.lock").to_timeout
+        expect { repo.content("Gemfile.lock") }.to raise_error(/Gemfile.lock/)
+        assert_requested request, times: 3
+      end
+    end
+
+    it "shows helpful error details when failed" do
+      with_webmock do
+        request = stub_request(:get, "https://raw.githubusercontent.com/grosser/parallel/master/Gemfile.lock").to_return(status: 403)
+        expect { repo.content("Gemfile.lock") }.to raise_error(/Gemfile.lock/)
+        assert_requested request
+      end
     end
 
     it "caches responses" do
@@ -56,7 +69,7 @@ describe OrganizationAudit::Repo do
       repo.content("Gemfile.lock")
     end
 
-    if File.exist?("spec/private.yml")
+    if private_configured
       it "can download a private file" do
         url = "https://api.github.com/repos/#{config["organization"]}/#{config["expected_organization"]}"
         repo = OrganizationAudit::Repo.new(
