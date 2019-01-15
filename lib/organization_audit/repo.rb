@@ -125,7 +125,7 @@ module OrganizationAudit
       results
     end
 
-    def self.http_get(url, headers)
+    def self.http_get(url, headers, retried: false)
       uri = URI(url)
       request = Net::HTTP::Get.new(uri, headers)
       http = Net::HTTP.new(uri.hostname, uri.port)
@@ -138,6 +138,15 @@ module OrganizationAudit
         end
 
       return response.body if response.code == '200'
+
+      # github sends 403 with 0-limit header when rate limit is exceeded
+      if !retried && response["x-ratelimit-remaining"] == "0"
+        wait = Integer(response["x-ratelimit-reset"]) - Time.now.to_i
+        warn "Github rate limit exhausted, retrying in #{wait}"
+        sleep wait
+        return http_get(url, headers, retried: true)
+      end
+
       raise RequestError.new("HTTP get error", url, response.code, response.body)
     end
 

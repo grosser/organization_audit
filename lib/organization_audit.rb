@@ -4,8 +4,7 @@ module OrganizationAudit
   autoload :Repo, 'organization_audit/repo'
 
   class << self
-    def all(options={})
-      ignore = (options[:ignore] || [])
+    def all(ignore: [], **options)
       unless options[:token]
         options = options.dup
         token = `git config github.token`.strip

@@ -17,9 +17,26 @@ describe OrganizationAudit::Repo do
   describe ".all" do
     it "returns the list of public repositories" do
       # use a big account -> make sure pagination works
-      list = OrganizationAudit::Repo.all(user: "grosser", token: public_token)
+      list = OrganizationAudit::Repo.all(user: "grosser")
       list.map(&:url).should include("https://github.com/grosser/parallel")
       list.size.should >= 300
+    end
+
+    it "retries when rate limit is  exceeded" do
+      with_webmock do
+        now = Time.now
+        Time.should_receive(:now).and_return(now)
+        request = stub_request(:get, "https://api.github.com/users/grosser/repos?page=1").to_return(
+          {status: 403, headers: {"x-ratelimit-remaining" => "0", "x-ratelimit-reset" => (now + 3).to_i}},
+          body: "[]"
+        )
+        OrganizationAudit::Repo.should_receive(:warn)
+        OrganizationAudit::Repo.should_receive(:sleep).with(3)
+
+        OrganizationAudit::Repo.all(user: "grosser")
+
+        assert_requested request, times: 2
+      end
     end
 
     if private_configured
