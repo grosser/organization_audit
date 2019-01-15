@@ -1,12 +1,13 @@
 require "spec_helper"
 
+SingleCov.covered!
+
 describe OrganizationAudit do
   def sh(command, options={})
     result = Bundler.with_clean_env { `#{command} #{"2>&1" unless options[:keep_output]}` }
     raise "#{options[:fail] ? "SUCCESS" : "FAIL"} #{command}\n#{result}" if $?.success? == !!options[:fail]
     result
   end
-
 
   it "has a VERSION" do
     OrganizationAudit::VERSION.should =~ /^[.\da-z]+$/
@@ -42,7 +43,7 @@ describe OrganizationAudit do
     it "can run readme optparse" do
       options = nil
       with_argv(["--user", "USER"]) { eval readme_code("optparse") }
-      options.should == {:user => "USER"}
+      options.should == {user: "USER"}
     end
   end
 
@@ -50,52 +51,55 @@ describe OrganizationAudit do
     let(:all) { ["unpatched"] }
 
     it "returns all repos" do
-      found = OrganizationAudit.all(:user => "user-with-unpatched-apps").map(&:name)
+      found = OrganizationAudit.all(user: "user-with-unpatched-apps").map(&:name)
       found.should == all
     end
 
     it "ignores by name" do
-      found = OrganizationAudit.all(:user => "user-with-unpatched-apps", :ignore => ["unpatched"]).map(&:name)
+      found = OrganizationAudit.all(user: "user-with-unpatched-apps", ignore: ["unpatched"]).map(&:name)
       found.should == []
     end
 
     it "ignores by url" do
-      found = OrganizationAudit.all(:user => "user-with-unpatched-apps", :ignore => ["https://github.com/user-with-unpatched-apps/unpatched"]).map(&:name)
+      found = OrganizationAudit.all(user: "user-with-unpatched-apps", ignore: ["https://github.com/user-with-unpatched-apps/unpatched"]).map(&:name)
       found.should == []
     end
 
     it "ignores by regexp" do
-      found = OrganizationAudit.all(:user => "user-with-unpatched-apps", :ignore => ["/unp?atch[e]d/"]).map(&:name)
+      found = OrganizationAudit.all(user: "user-with-unpatched-apps", ignore: ["/unp?atch[e]d/"]).map(&:name)
       found.should == []
 
-      found = OrganizationAudit.all(:user => "user-with-unpatched-apps", :ignore => ["/unp?ach[e]d/"]).map(&:name)
+      found = OrganizationAudit.all(user: "user-with-unpatched-apps", ignore: ["/unp?ach[e]d/"]).map(&:name)
       found.should == all
     end
 
     it "ignores by public" do
-      found = OrganizationAudit.all(:user => "user-with-unpatched-apps", :ignore_public => true).map(&:name)
+      found = OrganizationAudit.all(user: "user-with-unpatched-apps", ignore_public: true).map(&:name)
       found.should == []
     end
 
     context "token" do
-      around do |example|
-        Dir.mktmpdir do |dir|
-          Dir.chdir(dir) do
-            sh("git init")
-            sh("git config --local github.token xxx")
-            example.call
-          end
-        end
-      end
-
       it "uses token from git config" do
-        OrganizationAudit::Repo.should_receive(:all).with(hash_including(:token => 'xxx')).and_return []
+        OrganizationAudit::Repo.should_receive(:all).with(hash_including(token: PUBLIC_TOKEN)).and_return []
         OrganizationAudit.all.should == []
       end
 
+      it "uses no token when passed token is empty" do
+        begin
+          old = sh("git config github.token").strip
+          raise if old.empty?
+
+          sh("git config --local github.token ''")
+          OrganizationAudit::Repo.should_receive(:all).with({}).and_return []
+          OrganizationAudit.all.should == []
+        ensure
+          sh("git config --local github.token #{old}")
+        end
+      end
+
       it "does not overwrite passed token" do
-        OrganizationAudit::Repo.should_receive(:all).with(hash_including(:token => 'zzz')).and_return []
-        OrganizationAudit.all(:token => 'zzz').should == []
+        OrganizationAudit::Repo.should_receive(:all).with(hash_including(token: 'zzz')).and_return []
+        OrganizationAudit.all(token: 'zzz').should == []
       end
     end
   end

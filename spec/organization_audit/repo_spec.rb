@@ -6,23 +6,23 @@ private_configured = File.exist?("spec/private.yml")
 SingleCov.covered! uncovered: (private_configured ? 8 : 13)
 
 describe OrganizationAudit::Repo do
-  let(:public_token) { "6783dd513f2b28dc814" + "f251e3d503f1f2c2cf1c1" } # allows us to do more requests before getting rate limited, split to avoid security scanners
   let(:config){ YAML.load_file("spec/private.yml") }
   let(:repo) do
     OrganizationAudit::Repo.new(
-      "url" => "https://api.github.com/repos/grosser/parallel"
+      {"url" => "https://api.github.com/repos/grosser/parallel"},
+      PUBLIC_TOKEN
     )
   end
 
   describe ".all" do
     it "returns the list of public repositories" do
       # use a big account -> make sure pagination works
-      list = OrganizationAudit::Repo.all(user: "grosser")
+      list = OrganizationAudit::Repo.all(user: "grosser", token: PUBLIC_TOKEN)
       list.map(&:url).should include("https://github.com/grosser/parallel")
       list.size.should >= 300
     end
 
-    it "retries when rate limit is  exceeded" do
+    it "retries when rate limit is exceeded" do
       with_webmock do
         now = Time.now
         Time.should_receive(:now).and_return(now)
@@ -104,11 +104,11 @@ describe OrganizationAudit::Repo do
     end
 
     it "is not a gem if it has no gemspec" do
-      OrganizationAudit::Repo.new("url" => "https://api.github.com/repos/grosser/dotfiles").should_not be_gem
+      OrganizationAudit::Repo.new({"url" => "https://api.github.com/repos/grosser/dotfiles"}, PUBLIC_TOKEN).should_not be_gem
     end
 
     it "is not a gem if repo is empty" do
-      OrganizationAudit::Repo.new("url" => "https://api.github.com/repos/some-public-token/empty-project").should_not be_gem
+      OrganizationAudit::Repo.new({"url" => "https://api.github.com/repos/some-public-token/empty-project"}, PUBLIC_TOKEN).should_not be_gem
     end
   end
 

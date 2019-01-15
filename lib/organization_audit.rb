@@ -4,15 +4,14 @@ module OrganizationAudit
   autoload :Repo, 'organization_audit/repo'
 
   class << self
-    def all(ignore: [], **options)
+    def all(ignore: [], ignore_public: false, **options)
       unless options[:token]
-        options = options.dup
         token = `git config github.token`.strip
-        options[:token] = token unless token.empty?
+        options = options.merge(token: token) unless token.empty?
       end
 
       Repo.all(options).reject do |repo|
-        matches_ignore?(ignore, repo) or (options[:ignore_public] and repo.public?)
+        matches_ignore?(ignore, repo) || (ignore_public && repo.public?)
       end
     end
 
@@ -27,8 +26,8 @@ module OrganizationAudit
     private
 
     def matches_ignore?(ignore, repo)
-      ignore_regexp = ignore.select { |i| i =~ /^\/.*\/$/ }.map { |i| Regexp.new(i[1..-2]) }
-      ignore.include?(repo.url) or ignore.include?(repo.name) or ignore_regexp.any? { |i| i =~ repo.name }
+      ignore_regexp = Regexp.union *ignore.grep(/^\/.*\/$/).map { |i| Regexp.new(i[1..-2]) }
+      ignore.include?(repo.url) || ignore.include?(repo.name) || ignore_regexp.match?(repo.name)
     end
   end
 end
