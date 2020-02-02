@@ -143,7 +143,7 @@ module OrganizationAudit
       if !retried && response["x-ratelimit-remaining"] == "0"
         wait = Integer(response["x-ratelimit-reset"]) - Time.now.to_i
         warn "Github rate limit exhausted, retrying in #{wait}"
-        sleep wait
+        sleep wait + 60 # wait more in case our time drifts
         return http_get(url, headers, retried: true)
       end
 

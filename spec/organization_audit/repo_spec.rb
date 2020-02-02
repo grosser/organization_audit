@@ -31,7 +31,7 @@ describe OrganizationAudit::Repo do
           body: "[]"
         )
         OrganizationAudit::Repo.should_receive(:warn)
-        OrganizationAudit::Repo.should_receive(:sleep).with(3)
+        OrganizationAudit::Repo.should_receive(:sleep).with(63)
 
         OrganizationAudit::Repo.all(user: "grosser")
 
@@ -54,7 +54,7 @@ describe OrganizationAudit::Repo do
 
   describe "#last_commiter" do
     it "returns nice info" do
-      repo.last_commiter.should == "GitHub <noreply@github.com>"
+      repo.last_commiter.should =~ /^.+ <.+@.+>$/
     end
   end
 
