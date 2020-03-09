@@ -125,29 +125,31 @@ module OrganizationAudit
       results
     end
 
-    def self.http_get(url, headers, retried: false)
-      uri = URI(url)
-      request = Net::HTTP::Get.new(uri, headers)
-      http = Net::HTTP.new(uri.hostname, uri.port)
-      http.use_ssl = true if uri.instance_of? URI::HTTPS
-      response =
-        begin
-          http.start { |http| http.request(request) }
-        rescue
-          raise RequestError.new("#{$!.class} error during request #{url}", url)
+    def self.http_get(url, headers)
+      tries = 3
+      tries.times do |i|
+        uri = URI(url)
+        request = Net::HTTP::Get.new(uri, headers)
+        http = Net::HTTP.new(uri.hostname, uri.port)
+        http.use_ssl = true if uri.instance_of? URI::HTTPS
+        response =
+          begin
+            http.start { |http| http.request(request) }
+          rescue
+            raise RequestError.new("#{$!.class} error during request #{url}", url)
+          end
+
+        return response.body if response.code == '200'
+
+        # github sends 403 with 0-limit header when rate limit is exceeded
+        if i < (tries - 1) && response["x-ratelimit-remaining"] == "0"
+          wait = Integer(response["x-ratelimit-reset"]) - Time.now.to_i
+          warn "Github rate limit exhausted, retrying in #{wait}"
+          sleep wait + 60 # wait more in case our time drifts
+        else
+          raise RequestError.new("HTTP get error, retried #{i} times", url, response.code, response.body)
         end
-
-      return response.body if response.code == '200'
-
-      # github sends 403 with 0-limit header when rate limit is exceeded
-      if !retried && response["x-ratelimit-remaining"] == "0"
-        wait = Integer(response["x-ratelimit-reset"]) - Time.now.to_i
-        warn "Github rate limit exhausted, retrying in #{wait}"
-        sleep wait + 60 # wait more in case our time drifts
-        return http_get(url, headers, retried: true)
       end
-
-      raise RequestError.new("HTTP get error", url, response.code, response.body)
     end
 
     def branch
